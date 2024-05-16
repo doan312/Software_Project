@@ -1,0 +1,15 @@
+com.naver.Main
+HotelBookingPopup
+com.naver.HotelBookingPopup$1
+com.naver.JavaNaver$2
+JavaNaver
+com.naver.JavaNaver$1
+com.naver.HotelBookingPopup$2
+JavaNaver$4
+JavaNaver$3
+JavaNaver$2
+JavaNaver$1
+com.naver.Main$2
+com.naver.HotelBookingPopup
+com.naver.JavaNaver
+com.naver.Main$1
