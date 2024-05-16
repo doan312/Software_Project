@@ -10,7 +10,6 @@ import java.net.http.HttpResponse;
 import java.net.URI;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.Stack;
 
 public class JavaNaver {
@@ -23,7 +22,9 @@ public class JavaNaver {
     static JLayeredPane layeredPane;
     private static JButton zoomInButton;
     private static JButton zoomOutButton;
-    private static Stack<JPanel> pageStack = new Stack<>(); // Stack to keep track of pages
+    private static JButton reservationInquiryButton;
+    private static JButton logoutButton;
+    static Stack<JPanel> pageStack = new Stack<>(); // Stack to keep track of pages
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Naver Static Map Example");
@@ -37,20 +38,38 @@ public class JavaNaver {
         layeredPane.setPreferredSize(new Dimension(700, 800));
         layeredPane.add(label, JLayeredPane.DEFAULT_LAYER);
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setOpaque(false);
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
-        zoomInButton = new JButton("Zoom In");
-        zoomOutButton = new JButton("Zoom Out");
-        buttonPanel.add(zoomInButton);
-        buttonPanel.add(zoomOutButton);
-        buttonPanel.setBounds(600, 10, 100, 60);
-        layeredPane.add(buttonPanel, JLayeredPane.PALETTE_LAYER);
+        JPanel topRightPanel = new JPanel();
+        topRightPanel.setOpaque(false);
+        topRightPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        reservationInquiryButton = new JButton("예약조회");
+        topRightPanel.add(reservationInquiryButton);
+        topRightPanel.setBounds(400, 10, 300, 60);
+        layeredPane.add(topRightPanel, JLayeredPane.PALETTE_LAYER);
+
+        JPanel centerRightPanel = new JPanel();
+        centerRightPanel.setOpaque(false);
+        centerRightPanel.setLayout(new GridLayout(2, 1, 0, 10));
+        zoomInButton = new JButton("+");
+        zoomOutButton = new JButton("-");
+        centerRightPanel.add(zoomInButton);
+        centerRightPanel.add(zoomOutButton);
+        centerRightPanel.setBounds(650, 350, 50, 100); // Adjusted position for buttons
+        layeredPane.add(centerRightPanel, JLayeredPane.PALETTE_LAYER);
+
+        JPanel bottomRightPanel = new JPanel();
+        bottomRightPanel.setOpaque(false);
+        bottomRightPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        logoutButton = new JButton("로그아웃");
+        bottomRightPanel.add(logoutButton);
+        bottomRightPanel.setBounds(600, 720, 100, 60);
+        layeredPane.add(bottomRightPanel, JLayeredPane.PALETTE_LAYER);
 
         frame.add(layeredPane);
 
         zoomInButton.addActionListener(e -> adjustZoom(1));
         zoomOutButton.addActionListener(e -> adjustZoom(-1));
+        reservationInquiryButton.addActionListener(e -> ReservationInquiryPage.showReservationInquiryPage());
+        logoutButton.addActionListener(e -> logout());
 
         label.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
@@ -136,6 +155,122 @@ public class JavaNaver {
             layeredPane.repaint();
             setZoomButtonsVisible(true); // Show zoom buttons
         }
+    }
+
+    private static void logout() {
+        // Implementation for logout can be added here
+        // For now, it will just display a simple message
+        JOptionPane.showMessageDialog(layeredPane, "Logged out successfully.");
+    }
+}
+
+class ReservationInquiryPage {
+
+    public static void showReservationInquiryPage() {
+        JPanel currentPanel = new JPanel();
+        currentPanel.setLayout(null);
+        currentPanel.setBounds(0, 0, 700, 800);
+        for (Component component : JavaNaver.layeredPane.getComponents()) {
+            currentPanel.add(component);
+        }
+        JavaNaver.pageStack.push(currentPanel); // Push current page to stack
+
+        JPanel reservationPanel = new JPanel();
+        reservationPanel.setLayout(new BoxLayout(reservationPanel, BoxLayout.Y_AXIS));
+        reservationPanel.setBounds(0, 0, 700, 800);
+
+        JButton backButton = new JButton("뒤로");
+        backButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        backButton.addActionListener(e -> JavaNaver.goBack());
+        reservationPanel.add(backButton);
+
+        JLabel reservationLabel = new JLabel("예약 내역");
+        reservationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        reservationPanel.add(reservationLabel);
+
+        JScrollPane scrollPane = new JScrollPane(reservationPanel);
+        scrollPane.setBounds(0, 0, 700, 700);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
+        for (int i = 0; i < 10; i++) { // Dummy data for multiple reservations
+            JPanel reservationEntry = new JPanel();
+            reservationEntry.setLayout(new BoxLayout(reservationEntry, BoxLayout.Y_AXIS));
+            reservationEntry.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            reservationEntry.setPreferredSize(new Dimension(680, 200)); // Increased height
+
+            JTextArea reservationDetails = new JTextArea("호텔 예약 내역: \n- 호텔명: Sample Hotel " + (i + 1) + "\n- 체크인 날짜: 2024-05-20\n- 체크아웃 날짜: 2024-05-25\n- 투숙객 수: 2명\n\n 항공편 예약 내역: \n- 항공사: Sample Airline\n- 출발 날짜: 2024-05-20\n- 도착 날짜: 2024-05-25");
+            reservationDetails.setEditable(false);
+            reservationDetails.setLineWrap(true);
+            reservationDetails.setWrapStyleWord(true);
+            reservationDetails.setPreferredSize(new Dimension(660, 150)); // Adjust size
+            reservationEntry.add(reservationDetails);
+
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+            JButton cancelButton = new JButton("예약 취소");
+            cancelButton.addActionListener(e -> cancelReservation());
+            buttonPanel.add(cancelButton);
+
+            JButton completeButton = new JButton("이용 완료");
+            completeButton.addActionListener(e -> completeReservation());
+            buttonPanel.add(completeButton);
+
+            reservationEntry.add(buttonPanel);
+            reservationPanel.add(reservationEntry);
+        }
+
+        JavaNaver.layeredPane.add(scrollPane, JLayeredPane.PALETTE_LAYER);
+        JavaNaver.layeredPane.revalidate();
+        JavaNaver.layeredPane.repaint();
+    }
+
+    private static void cancelReservation() {
+        JOptionPane.showMessageDialog(JavaNaver.layeredPane, "예약이 취소되었습니다.");
+        JavaNaver.goBack();
+    }
+
+    private static void completeReservation() {
+        showRatingDialog();
+    }
+
+    private static void showRatingDialog() {
+        JDialog ratingDialog = new JDialog();
+        ratingDialog.setTitle("별점 주기");
+        ratingDialog.setSize(300, 200);
+        ratingDialog.setLocationRelativeTo(null);
+
+        JPanel ratingPanel = new JPanel();
+        ratingPanel.setLayout(new BoxLayout(ratingPanel, BoxLayout.Y_AXIS));
+
+        JLabel ratingLabel = new JLabel("별점을 선택하세요:");
+        ratingLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        ratingPanel.add(ratingLabel);
+
+        JPanel starsPanel = new JPanel();
+        starsPanel.setLayout(new FlowLayout());
+        ButtonGroup starGroup = new ButtonGroup();
+
+        for (int i = 1; i <= 5; i++) {
+            JRadioButton starButton = new JRadioButton(i + "★");
+            starButton.setActionCommand(String.valueOf(i));
+            starGroup.add(starButton);
+            starsPanel.add(starButton);
+        }
+        ratingPanel.add(starsPanel);
+
+        JButton submitButton = new JButton("제출");
+        submitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        submitButton.addActionListener(e -> {
+            String selectedRating = starGroup.getSelection().getActionCommand();
+            JOptionPane.showMessageDialog(ratingDialog, "별점 " + selectedRating + "점을 주셨습니다.");
+            ratingDialog.dispose();
+            JavaNaver.goBack();
+        });
+        ratingPanel.add(submitButton);
+
+        ratingDialog.add(ratingPanel);
+        ratingDialog.setVisible(true);
     }
 }
 
@@ -247,6 +382,7 @@ class HotelBookingPopup {
         uploadButton.setBounds(140, 420, 200, 25);
         formPanel.add(uploadButton);
 
+    // Booking Complete Button
 // Booking Complete Button
 JButton bookingCompleteButton = new JButton("예약 완료");
 bookingCompleteButton.setBounds(280, 460, 120, 30); // Adjusted position to be below the hotel content
