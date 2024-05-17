@@ -11,6 +11,9 @@ import java.net.URI;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.util.Stack;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class JavaNaver {
 
@@ -27,7 +30,7 @@ public class JavaNaver {
     static Stack<JPanel> pageStack = new Stack<>(); // Stack to keep track of pages
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Naver Static Map Example");
+        JFrame frame = new JFrame("여행 예약 시스템");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(700, 800);
 
@@ -102,8 +105,8 @@ public class JavaNaver {
     }
 
     private static boolean isNearMarker(Point clickPoint) {
-        double distance = clickPoint.distance(markerPosition);
-        return distance < 50; // Check if click is within 50 pixels of the marker
+        // This method now returns true for any click, allowing any click to trigger the transition to the reservation page
+        return true;
     }
 
     public static void fetchAndDisplayMap() {
@@ -120,7 +123,15 @@ public class JavaNaver {
 
             String clientId = "5bt0m1r7kk";
             String clientSecret = "gxArtOeB8YTQrtpI5vNwZPPKaXSdcOANdDKRUhHX";
-            String markers = String.format("type:d|size:mid|pos:%s%%20%s", longitude, latitude);
+
+            // Current location marker in red
+            String currentLocationMarker = String.format("type:d|size:mid|color:red|pos:%s%%20%s", longitude, latitude);
+
+            // Additional markers in green
+            String additionalMarkers = "type:d|size:mid|color:green|pos:126.9780%2037.5665|type:d|size:mid|color:green|pos:129.0756%2035.1796|type:d|size:mid|color:green|pos:128.6014%2035.8714";
+
+            String markers = currentLocationMarker + "|" + additionalMarkers;
+
             String mapUrl = String.format(
                     "https://naveropenapi.apigw.ntruss.com/map-static/v2/raster?w=700&h=800&center=%s,%s&level=%d&markers=%s&X-NCP-APIGW-API-KEY-ID=%s&X-NCP-APIGW-API-KEY=%s",
                     longitude, latitude, zoomLevel, markers, clientId, clientSecret
@@ -164,6 +175,8 @@ public class JavaNaver {
     }
 }
 
+
+
 class ReservationInquiryPage {
 
     public static void showReservationInquiryPage() {
@@ -179,37 +192,39 @@ class ReservationInquiryPage {
         reservationPanel.setLayout(new BoxLayout(reservationPanel, BoxLayout.Y_AXIS));
         reservationPanel.setBounds(0, 0, 700, 800);
 
+        JScrollPane scrollPane = new JScrollPane(reservationPanel);
+        scrollPane.setBounds(0, 50, 700, 750);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
+        // Add the back button to the top left corner
         JButton backButton = new JButton("뒤로");
-        backButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        backButton.setBounds(10, 10, 80, 30);
         backButton.addActionListener(e -> JavaNaver.goBack());
-        reservationPanel.add(backButton);
+        JavaNaver.layeredPane.add(backButton, JLayeredPane.PALETTE_LAYER);
 
         JLabel reservationLabel = new JLabel("예약 내역");
         reservationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         reservationPanel.add(reservationLabel);
 
-        JScrollPane scrollPane = new JScrollPane(reservationPanel);
-        scrollPane.setBounds(0, 0, 700, 700);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-
         for (int i = 0; i < 10; i++) { // Dummy data for multiple reservations
+            String reservationId = "RES" + (1000 + i); // Unique reservation ID
             JPanel reservationEntry = new JPanel();
             reservationEntry.setLayout(new BoxLayout(reservationEntry, BoxLayout.Y_AXIS));
             reservationEntry.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-            reservationEntry.setPreferredSize(new Dimension(680, 200)); // Increased height
+            reservationEntry.setPreferredSize(new Dimension(680, 300)); // Increased height for rental car details
 
-            JTextArea reservationDetails = new JTextArea("호텔 예약 내역: \n- 호텔명: Sample Hotel " + (i + 1) + "\n- 체크인 날짜: 2024-05-20\n- 체크아웃 날짜: 2024-05-25\n- 투숙객 수: 2명\n\n 항공편 예약 내역: \n- 항공사: Sample Airline\n- 출발 날짜: 2024-05-20\n- 도착 날짜: 2024-05-25");
+            JTextArea reservationDetails = new JTextArea("예약 번호: " + reservationId + "\n\n호텔 예약 내역: \n- 호텔명: Sample Hotel " + (i + 1) + "\n- 체크인 날짜: 2024-05-20\n- 체크아웃 날짜: 2024-05-25\n- 투숙객 수: 2명\n\n항공편 예약 내역: \n- 항공사: Sample Airline\n- 출발 날짜: 2024-05-20\n- 도착 날짜: 2024-05-25\n\n렌터카 예약 내역: \n- 자동차 회사: Sample Car Rental\n- 차량명: Sample Car " + (i + 1) + "\n- 대여 기간: 2024-05-20 ~ 2024-05-25");
             reservationDetails.setEditable(false);
             reservationDetails.setLineWrap(true);
             reservationDetails.setWrapStyleWord(true);
-            reservationDetails.setPreferredSize(new Dimension(660, 150)); // Adjust size
+            reservationDetails.setPreferredSize(new Dimension(660, 250)); // Adjust size for rental car details
             reservationEntry.add(reservationDetails);
 
             JPanel buttonPanel = new JPanel();
             buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
             JButton cancelButton = new JButton("예약 취소");
-            cancelButton.addActionListener(e -> cancelReservation());
+            cancelButton.addActionListener(e -> confirmCancelReservation());
             buttonPanel.add(cancelButton);
 
             JButton completeButton = new JButton("이용 완료");
@@ -223,6 +238,19 @@ class ReservationInquiryPage {
         JavaNaver.layeredPane.add(scrollPane, JLayeredPane.PALETTE_LAYER);
         JavaNaver.layeredPane.revalidate();
         JavaNaver.layeredPane.repaint();
+    }
+
+    private static void confirmCancelReservation() {
+        int response = JOptionPane.showConfirmDialog(
+                JavaNaver.layeredPane,
+                "정말 취소하시겠습니까?",
+                "예약 취소 확인",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (response == JOptionPane.YES_OPTION) {
+            cancelReservation();
+        }
     }
 
     private static void cancelReservation() {
@@ -273,6 +301,8 @@ class ReservationInquiryPage {
         ratingDialog.setVisible(true);
     }
 }
+
+
 
 
 class HotelBookingPopup {
@@ -378,15 +408,41 @@ class HotelBookingPopup {
         JLabel hotelPhotoLabel = new JLabel("호텔 대표 사진:");
         hotelPhotoLabel.setBounds(20, 420, 100, 25);
         formPanel.add(hotelPhotoLabel);
-        JButton uploadButton = new JButton("사진 업로드");
-        uploadButton.setBounds(140, 420, 200, 25);
-        formPanel.add(uploadButton);
+    
 
     // Booking Complete Button
-// Booking Complete Button
 JButton bookingCompleteButton = new JButton("예약 완료");
 bookingCompleteButton.setBounds(280, 460, 120, 30); // Adjusted position to be below the hotel content
 bookingCompleteButton.addActionListener(e -> {
+    // Collect hotel information
+    String hotelInfo = String.format(
+        "비즈니스 넘버: %s%n" +
+        "호텔 이름: %s%n" +
+        "지역: %s%n" +
+        "상세 주소: %s%n" +
+        "투숙객 수: %s%n" +
+        "조식 여부: %s%n" +
+        "룸 타입: %s%n" +
+        "숙박 비용: %s%n" +
+        "등록 여부: %s%n",
+        hotelBSNumField.getText(),
+        hotelNameField.getText(),
+        hotelAreaComboBox.getSelectedItem().toString(),
+        detailedAddressField.getText(),
+        numGuestComboBox.getSelectedItem().toString(),
+        breakfastYes.isSelected() ? "O" : "X",
+        suitRoom.isSelected() ? "스위트룸" : deluxeRoom.isSelected() ? "디럭스룸" : "스탠다드룸",
+        hotelCostField.getText(),
+        registerField.getText()
+    );
+
+    // Save hotel information to a text file
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter("hotel_booking_details.txt"))) {
+        writer.write(hotelInfo);
+    } catch (IOException ioException) {
+        ioException.printStackTrace();
+    }
+
     // Show confirmation dialog
     int response = JOptionPane.showOptionDialog(
             formPanel,
@@ -404,8 +460,10 @@ bookingCompleteButton.addActionListener(e -> {
 });
 formPanel.add(bookingCompleteButton);
 
+
+
 // Checkbox for Airline Booking
-JCheckBox airlineBookingCheckbox = new JCheckBox("항공편 예약");
+JCheckBox airlineBookingCheckbox = new JCheckBox("항공편 추가 예약");
 airlineBookingCheckbox.setBounds(20, 500, 120, 25);
 formPanel.add(airlineBookingCheckbox);
 
@@ -415,7 +473,7 @@ airlineFormPanel.setVisible(false);
 formPanel.add(airlineFormPanel);
 
 // Checkbox for Rental Car Booking
-JCheckBox rentalCarBookingCheckbox = new JCheckBox("렌터카 예약");
+JCheckBox rentalCarBookingCheckbox = new JCheckBox("렌터카 추가 예약");
 rentalCarBookingCheckbox.setBounds(20, 530, 120, 25); // Adjusted position
 formPanel.add(rentalCarBookingCheckbox);
 
@@ -565,9 +623,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         JLabel airplanePhotoLabel = new JLabel("항공 대표 사진:");
         airplanePhotoLabel.setBounds(20, 320, 100, 25);
         airlineFormPanel.add(airplanePhotoLabel);
-        JButton uploadButton = new JButton("사진 업로드");
-        uploadButton.setBounds(140, 320, 200, 25);
-        airlineFormPanel.add(uploadButton);
+   
 
         return airlineFormPanel;
     }
@@ -662,9 +718,6 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         JLabel carPhotoLabel = new JLabel("렌터카 대표 사진:");
         carPhotoLabel.setBounds(20, 320, 100, 25);
         rentalCarFormPanel.add(carPhotoLabel);
-        JButton uploadButton = new JButton("사진 업로드");
-        uploadButton.setBounds(140, 320, 200, 25);
-        rentalCarFormPanel.add(uploadButton);
 
         return rentalCarFormPanel;
     }
