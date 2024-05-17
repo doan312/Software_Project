@@ -13,6 +13,9 @@ import java.awt.image.BufferedImage;
 import java.util.Stack;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 
 public class JavaNaver {
@@ -28,6 +31,7 @@ public class JavaNaver {
     private static JButton reservationInquiryButton;
     private static JButton logoutButton;
     static Stack<JPanel> pageStack = new Stack<>(); // Stack to keep track of pages
+    private static int reservationCounter = 1000; // Initialize reservation counter
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("여행 예약 시스템");
@@ -104,6 +108,10 @@ public class JavaNaver {
         frame.setVisible(true);
     }
 
+    public static String generateReservationNumber() {
+        return "RES" + (reservationCounter++);
+    }
+
     private static boolean isNearMarker(Point clickPoint) {
         // This method now returns true for any click, allowing any click to trigger the transition to the reservation page
         return true;
@@ -177,6 +185,8 @@ public class JavaNaver {
 
 
 
+
+
 class ReservationInquiryPage {
 
     public static void showReservationInquiryPage() {
@@ -206,38 +216,56 @@ class ReservationInquiryPage {
         reservationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         reservationPanel.add(reservationLabel);
 
-        for (int i = 0; i < 10; i++) { // Dummy data for multiple reservations
-            String reservationId = "RES" + (1000 + i); // Unique reservation ID
-            JPanel reservationEntry = new JPanel();
-            reservationEntry.setLayout(new BoxLayout(reservationEntry, BoxLayout.Y_AXIS));
-            reservationEntry.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-            reservationEntry.setPreferredSize(new Dimension(680, 300)); // Increased height for rental car details
-
-            JTextArea reservationDetails = new JTextArea("예약 번호: " + reservationId + "\n\n호텔 예약 내역: \n- 호텔명: Sample Hotel " + (i + 1) + "\n- 체크인 날짜: 2024-05-20\n- 체크아웃 날짜: 2024-05-25\n- 투숙객 수: 2명\n\n항공편 예약 내역: \n- 항공사: Sample Airline\n- 출발 날짜: 2024-05-20\n- 도착 날짜: 2024-05-25\n\n렌터카 예약 내역: \n- 자동차 회사: Sample Car Rental\n- 차량명: Sample Car " + (i + 1) + "\n- 대여 기간: 2024-05-20 ~ 2024-05-25");
-            reservationDetails.setEditable(false);
-            reservationDetails.setLineWrap(true);
-            reservationDetails.setWrapStyleWord(true);
-            reservationDetails.setPreferredSize(new Dimension(660, 250)); // Adjust size for rental car details
-            reservationEntry.add(reservationDetails);
-
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
-
-            JButton cancelButton = new JButton("예약 취소");
-            cancelButton.addActionListener(e -> confirmCancelReservation());
-            buttonPanel.add(cancelButton);
-
-            JButton completeButton = new JButton("이용 완료");
-            completeButton.addActionListener(e -> completeReservation());
-            buttonPanel.add(completeButton);
-
-            reservationEntry.add(buttonPanel);
-            reservationPanel.add(reservationEntry);
+        // Read reservation details from the file
+        try (BufferedReader reader = new BufferedReader(new FileReader("reservation_details.txt"))) {
+            String line;
+            StringBuilder reservationDetails = new StringBuilder();
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    addReservationEntry(reservationPanel, reservationDetails.toString());
+                    reservationDetails.setLength(0);
+                } else {
+                    reservationDetails.append(line).append("\n");
+                }
+            }
+            if (reservationDetails.length() > 0) {
+                addReservationEntry(reservationPanel, reservationDetails.toString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         JavaNaver.layeredPane.add(scrollPane, JLayeredPane.PALETTE_LAYER);
         JavaNaver.layeredPane.revalidate();
         JavaNaver.layeredPane.repaint();
+    }
+
+    private static void addReservationEntry(JPanel reservationPanel, String details) {
+        JPanel reservationEntry = new JPanel();
+        reservationEntry.setLayout(new BoxLayout(reservationEntry, BoxLayout.Y_AXIS));
+        reservationEntry.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        reservationEntry.setPreferredSize(new Dimension(680, 300)); // Adjust height if necessary
+
+        JTextArea reservationDetails = new JTextArea(details);
+        reservationDetails.setEditable(false);
+        reservationDetails.setLineWrap(true);
+        reservationDetails.setWrapStyleWord(true);
+        reservationDetails.setPreferredSize(new Dimension(660, 250)); // Adjust size if necessary
+        reservationEntry.add(reservationDetails);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+        JButton cancelButton = new JButton("예약 취소");
+        cancelButton.addActionListener(e -> confirmCancelReservation());
+        buttonPanel.add(cancelButton);
+
+        JButton completeButton = new JButton("이용 완료");
+        completeButton.addActionListener(e -> completeReservation());
+        buttonPanel.add(completeButton);
+
+        reservationEntry.add(buttonPanel);
+        reservationPanel.add(reservationEntry);
     }
 
     private static void confirmCancelReservation() {
@@ -303,15 +331,13 @@ class ReservationInquiryPage {
 }
 
 
-
-
 class HotelBookingPopup {
     public static void openHotelBookingPage() {
         // Hide zoom buttons
         JavaNaver.setZoomButtonsVisible(false);
 
         JPanel formPanel = new JPanel();
-         formPanel.setLayout(null); // Use null layout for absolute positioning
+        formPanel.setLayout(null); // Use null layout for absolute positioning
         formPanel.setPreferredSize(new Dimension(680, 1600)); // Adjusted preferred size for scrolling
 
         // Business Number
@@ -319,6 +345,7 @@ class HotelBookingPopup {
         bsNumLabel.setBounds(20, 60, 100, 25);
         formPanel.add(bsNumLabel);
         JTextField hotelBSNumField = new JTextField(20);
+        hotelBSNumField.setName("호텔 비즈니스 넘버");
         hotelBSNumField.setBounds(140, 60, 200, 25);
         formPanel.add(hotelBSNumField);
 
@@ -327,6 +354,7 @@ class HotelBookingPopup {
         hotelNameLabel.setBounds(20, 100, 100, 25);
         formPanel.add(hotelNameLabel);
         JTextField hotelNameField = new JTextField(20);
+        hotelNameField.setName("호텔 이름");
         hotelNameField.setBounds(140, 100, 200, 25);
         formPanel.add(hotelNameField);
 
@@ -336,6 +364,7 @@ class HotelBookingPopup {
         formPanel.add(hotelAreaLabel);
         String[] areas = {"서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시", "세종특별자치시", "경기도", "강원도", "충청북도", "충청남도", "전라북도", "전라남도", "경상북도", "경상남도", "제주특별자치도"};
         JComboBox<String> hotelAreaComboBox = new JComboBox<>(areas);
+        hotelAreaComboBox.setName("호텔 지역");
         hotelAreaComboBox.setBounds(140, 140, 200, 25);
         formPanel.add(hotelAreaComboBox);
 
@@ -344,6 +373,7 @@ class HotelBookingPopup {
         detailedAddressLabel.setBounds(20, 180, 100, 25);
         formPanel.add(detailedAddressLabel);
         JTextField detailedAddressField = new JTextField(20);
+        detailedAddressField.setName("호텔 상세 주소");
         detailedAddressField.setBounds(140, 180, 200, 25);
         formPanel.add(detailedAddressField);
 
@@ -353,6 +383,7 @@ class HotelBookingPopup {
         formPanel.add(numGuestLabel);
         String[] guestNumbers = {"1명", "2명", "3명", "4명", "5명", "6명"};
         JComboBox<String> numGuestComboBox = new JComboBox<>(guestNumbers);
+        numGuestComboBox.setName("투숙객 수");
         numGuestComboBox.setBounds(140, 220, 200, 25);
         formPanel.add(numGuestComboBox);
 
@@ -361,8 +392,10 @@ class HotelBookingPopup {
         breakfastLabel.setBounds(20, 260, 100, 25);
         formPanel.add(breakfastLabel);
         JRadioButton breakfastYes = new JRadioButton("O");
+        breakfastYes.setName("조식 여부");
         breakfastYes.setBounds(140, 260, 50, 25);
         JRadioButton breakfastNo = new JRadioButton("X");
+        breakfastNo.setName("조식 여부");
         breakfastNo.setBounds(200, 260, 50, 25);
         ButtonGroup breakfastGroup = new ButtonGroup();
         breakfastGroup.add(breakfastYes);
@@ -375,10 +408,13 @@ class HotelBookingPopup {
         roomTypeLabel.setBounds(20, 300, 100, 25);
         formPanel.add(roomTypeLabel);
         JRadioButton suitRoom = new JRadioButton("스위트룸");
+        suitRoom.setName("룸 타입");
         suitRoom.setBounds(140, 300, 80, 25);
         JRadioButton deluxeRoom = new JRadioButton("디럭스룸");
+        deluxeRoom.setName("룸 타입");
         deluxeRoom.setBounds(230, 300, 80, 25);
         JRadioButton standardRoom = new JRadioButton("스탠다드룸");
+        standardRoom.setName("룸 타입");
         standardRoom.setBounds(320, 300, 100, 25);
         ButtonGroup roomTypeGroup = new ButtonGroup();
         roomTypeGroup.add(suitRoom);
@@ -393,6 +429,7 @@ class HotelBookingPopup {
         hotelCostLabel.setBounds(20, 340, 100, 25);
         formPanel.add(hotelCostLabel);
         JTextField hotelCostField = new JTextField(20);
+        hotelCostField.setName("숙박 비용");
         hotelCostField.setBounds(140, 340, 200, 25);
         formPanel.add(hotelCostField);
 
@@ -401,6 +438,7 @@ class HotelBookingPopup {
         registerLabel.setBounds(20, 380, 100, 25);
         formPanel.add(registerLabel);
         JTextField registerField = new JTextField(20);
+        registerField.setName("등록 여부");
         registerField.setBounds(140, 380, 200, 25);
         formPanel.add(registerField);
 
@@ -408,106 +446,70 @@ class HotelBookingPopup {
         JLabel hotelPhotoLabel = new JLabel("호텔 대표 사진:");
         hotelPhotoLabel.setBounds(20, 420, 100, 25);
         formPanel.add(hotelPhotoLabel);
-    
 
-    // Booking Complete Button
-JButton bookingCompleteButton = new JButton("예약 완료");
-bookingCompleteButton.setBounds(280, 460, 120, 30); // Adjusted position to be below the hotel content
-bookingCompleteButton.addActionListener(e -> {
-    // Collect hotel information
-    String hotelInfo = String.format(
-        "비즈니스 넘버: %s%n" +
-        "호텔 이름: %s%n" +
-        "지역: %s%n" +
-        "상세 주소: %s%n" +
-        "투숙객 수: %s%n" +
-        "조식 여부: %s%n" +
-        "룸 타입: %s%n" +
-        "숙박 비용: %s%n" +
-        "등록 여부: %s%n",
-        hotelBSNumField.getText(),
-        hotelNameField.getText(),
-        hotelAreaComboBox.getSelectedItem().toString(),
-        detailedAddressField.getText(),
-        numGuestComboBox.getSelectedItem().toString(),
-        breakfastYes.isSelected() ? "O" : "X",
-        suitRoom.isSelected() ? "스위트룸" : deluxeRoom.isSelected() ? "디럭스룸" : "스탠다드룸",
-        hotelCostField.getText(),
-        registerField.getText()
-    );
+        // Booking Complete Button
+        JButton bookingCompleteButton = new JButton("예약 완료");
+        bookingCompleteButton.setBounds(280, 460, 120, 30); // Adjusted position to be below the hotel content
+        bookingCompleteButton.addActionListener(e -> {
+            String reservationNumber = JavaNaver.generateReservationNumber(); // Generate reservation number
+            saveReservationDetails(formPanel, reservationNumber);
 
-    // Save hotel information to a text file
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter("hotel_booking_details.txt"))) {
-        writer.write(hotelInfo);
-    } catch (IOException ioException) {
-        ioException.printStackTrace();
-    }
+            // Show confirmation dialog
+            int response = JOptionPane.showOptionDialog(
+                    formPanel,
+                    "예약 완료되었습니다. 예약 번호: " + reservationNumber,
+                    "예약 완료",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    new Object[]{"확인"},
+                    "확인"
+            );
+            if (response == JOptionPane.OK_OPTION) {
+                JavaNaver.goBack(); // Go back to the previous page
+            }
+        });
+        formPanel.add(bookingCompleteButton);
 
-    // Show confirmation dialog
-    int response = JOptionPane.showOptionDialog(
-            formPanel,
-            "예약 완료되었습니다.",
-            "예약 완료",
-            JOptionPane.DEFAULT_OPTION,
-            JOptionPane.INFORMATION_MESSAGE,
-            null,
-            new Object[]{"확인"},
-            "확인"
-    );
-    if (response == JOptionPane.OK_OPTION) {
-        JavaNaver.goBack(); // Go back to the previous page
-    }
-});
-formPanel.add(bookingCompleteButton);
+        // Checkbox for Airline Booking
+        JCheckBox airlineBookingCheckbox = new JCheckBox("항공편 추가 예약");
+        airlineBookingCheckbox.setBounds(20, 500, 120, 25);
+        formPanel.add(airlineBookingCheckbox);
 
+        // Airline Form Panel (Initially Hidden)
+        JPanel airlineFormPanel = createAirlineForm();
+        airlineFormPanel.setVisible(false);
+        formPanel.add(airlineFormPanel);
 
+        // Checkbox for Rental Car Booking
+        JCheckBox rentalCarBookingCheckbox = new JCheckBox("렌터카 추가 예약");
+        rentalCarBookingCheckbox.setBounds(20, 530, 120, 25); // Adjusted position
+        formPanel.add(rentalCarBookingCheckbox);
 
-// Checkbox for Airline Booking
-JCheckBox airlineBookingCheckbox = new JCheckBox("항공편 추가 예약");
-airlineBookingCheckbox.setBounds(20, 500, 120, 25);
-formPanel.add(airlineBookingCheckbox);
-
-// Airline Form Panel (Initially Hidden)
-JPanel airlineFormPanel = createAirlineForm();
-airlineFormPanel.setVisible(false);
-formPanel.add(airlineFormPanel);
-
-// Checkbox for Rental Car Booking
-JCheckBox rentalCarBookingCheckbox = new JCheckBox("렌터카 추가 예약");
-rentalCarBookingCheckbox.setBounds(20, 530, 120, 25); // Adjusted position
-formPanel.add(rentalCarBookingCheckbox);
-
-// Rental Car Form Panel (Initially Hidden)
-JPanel rentalCarFormPanel = createRentalCarForm();
-rentalCarFormPanel.setVisible(false);
-formPanel.add(rentalCarFormPanel);
-
+        // Rental Car Form Panel (Initially Hidden)
+        JPanel rentalCarFormPanel = createRentalCarForm();
+        rentalCarFormPanel.setVisible(false);
+        formPanel.add(rentalCarFormPanel);
 
         // Show/Hide Airline Form based on Checkbox
-        // Show/Hide Airline Form based on Checkbox
-airlineBookingCheckbox.addItemListener(e -> {
-    boolean airlineVisible = airlineBookingCheckbox.isSelected();
-    airlineFormPanel.setVisible(airlineVisible);
-    adjustFormPositions(formPanel, airlineVisible, rentalCarBookingCheckbox.isSelected(), airlineFormPanel, rentalCarFormPanel, bookingCompleteButton, rentalCarBookingCheckbox);
-});
+        airlineBookingCheckbox.addItemListener(e -> {
+            boolean airlineVisible = airlineBookingCheckbox.isSelected();
+            airlineFormPanel.setVisible(airlineVisible);
+            adjustFormPositions(formPanel, airlineVisible, rentalCarBookingCheckbox.isSelected(), airlineFormPanel, rentalCarFormPanel, bookingCompleteButton, rentalCarBookingCheckbox);
+        });
 
-// Show/Hide Rental Car Form based on Checkbox
-rentalCarBookingCheckbox.addItemListener(e -> {
-    boolean rentalCarVisible = rentalCarBookingCheckbox.isSelected();
-    rentalCarFormPanel.setVisible(rentalCarVisible);
-    adjustFormPositions(formPanel, airlineBookingCheckbox.isSelected(), rentalCarVisible, airlineFormPanel, rentalCarFormPanel, bookingCompleteButton, rentalCarBookingCheckbox);
-});
-
+        // Show/Hide Rental Car Form based on Checkbox
+        rentalCarBookingCheckbox.addItemListener(e -> {
+            boolean rentalCarVisible = rentalCarBookingCheckbox.isSelected();
+            rentalCarFormPanel.setVisible(rentalCarVisible);
+            adjustFormPositions(formPanel, airlineBookingCheckbox.isSelected(), rentalCarVisible, airlineFormPanel, rentalCarFormPanel, bookingCompleteButton, rentalCarBookingCheckbox);
+        });
 
         // Back Button
- // Back Button
-JButton backButton = new JButton("Back");
-backButton.setBounds(20, 20, 80, 30); // Position the back button at the top left corner
-backButton.addActionListener(e -> {
-    JavaNaver.goBack();
-});
-formPanel.add(backButton);
-
+        JButton backButton = new JButton("Back");
+        backButton.setBounds(20, 20, 80, 30); // Position the back button at the top left corner
+        backButton.addActionListener(e -> JavaNaver.goBack());
+        formPanel.add(backButton);
 
         JScrollPane scrollPane = new JScrollPane(formPanel);
         scrollPane.setBounds(0, 0, 700, 800);
@@ -518,28 +520,26 @@ formPanel.add(backButton);
         JavaNaver.layeredPane.repaint();
     }
 
-private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible, boolean rentalCarVisible, JPanel airlineFormPanel, JPanel rentalCarFormPanel, JButton bookingCompleteButton, JCheckBox rentalCarBookingCheckbox) {
-    int baseY = 560; // 기본 Y 좌표, 체크박스 바로 아래 위치
+    private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible, boolean rentalCarVisible, JPanel airlineFormPanel, JPanel rentalCarFormPanel, JButton bookingCompleteButton, JCheckBox rentalCarBookingCheckbox) {
+        int baseY = 560; // 기본 Y 좌표, 체크박스 바로 아래 위치
 
-    if (airlineVisible) {
-        airlineFormPanel.setBounds(20, baseY + 20, 700, 350); // Show airline form below the checkbox
-        baseY += 370; // 항공편 예약 폼 높이와 패딩만큼 아래로 이동
+        if (airlineVisible) {
+            airlineFormPanel.setBounds(20, baseY + 20, 700, 350); // Show airline form below the checkbox
+            baseY += 370; // 항공편 예약 폼 높이와 패딩만큼 아래로 이동
+        }
+
+        // 렌터카 예약 체크박스 위치 조정
+        rentalCarBookingCheckbox.setBounds(20, baseY + 20, 120, 25);
+        baseY += 50; // 체크박스 높이와 패딩만큼 아래로 이동
+
+        if (rentalCarVisible) {
+            rentalCarFormPanel.setBounds(20, baseY + 20, 700, 350); // 렌터카 예약 폼 위치 설정
+            baseY += 370; // 렌터카 예약 폼 높이와 패딩만큼 아래로 이동
+        }
+
+        // Move the booking complete button to the bottom
+        bookingCompleteButton.setBounds(280, baseY + 60, 120, 30);
     }
-
-    // 렌터카 예약 체크박스 위치 조정
-    rentalCarBookingCheckbox.setBounds(20, baseY + 20, 120, 25);
-    baseY += 50; // 체크박스 높이와 패딩만큼 아래로 이동
-
-    if (rentalCarVisible) {
-        rentalCarFormPanel.setBounds(20, baseY + 20, 700, 350); // 렌터카 예약 폼 위치 설정
-        baseY += 370; // 렌터카 예약 폼 높이와 패딩만큼 아래로 이동
-    }
-
-    // Move the booking complete button to the bottom
-    bookingCompleteButton.setBounds(280, baseY + 60, 120, 30);
-}
-
-
 
     private static JPanel createAirlineForm() {
         JPanel airlineFormPanel = new JPanel();
@@ -550,6 +550,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         bsNumLabel.setBounds(20, 0, 100, 25);
         airlineFormPanel.add(bsNumLabel);
         JTextField airplaneBSNumField = new JTextField(20);
+        airplaneBSNumField.setName("항공 비즈니스 넘버");
         airplaneBSNumField.setBounds(140, 0, 200, 25);
         airlineFormPanel.add(airplaneBSNumField);
 
@@ -559,6 +560,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         airlineFormPanel.add(airlineLabel);
         String[] airlines = {"제주 항공", "대한 항공", "에어 부산"};
         JComboBox<String> airlineComboBox = new JComboBox<>(airlines);
+        airlineComboBox.setName("항공사");
         airlineComboBox.setBounds(140, 40, 200, 25);
         airlineFormPanel.add(airlineComboBox);
 
@@ -568,6 +570,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         airlineFormPanel.add(departureAreaLabel);
         String[] departureAreas = {"김포", "제주", "부산", "대구", "여수", "광주", "인천"};
         JComboBox<String> departureAreaComboBox = new JComboBox<>(departureAreas);
+        departureAreaComboBox.setName("출발 지역");
         departureAreaComboBox.setBounds(140, 80, 200, 25);
         airlineFormPanel.add(departureAreaComboBox);
 
@@ -577,6 +580,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         airlineFormPanel.add(arrivalAreaLabel);
         String[] arrivalAreas = {"김포", "제주", "부산", "대구", "여수", "광주", "인천"};
         JComboBox<String> arrivalAreaComboBox = new JComboBox<>(arrivalAreas);
+        arrivalAreaComboBox.setName("도착 지역");
         arrivalAreaComboBox.setBounds(140, 120, 200, 25);
         airlineFormPanel.add(arrivalAreaComboBox);
 
@@ -586,6 +590,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         airlineFormPanel.add(seatTypeLabel);
         String[] seatTypes = {"이코노미", "비즈니스", "일등석"};
         JComboBox<String> seatTypeComboBox = new JComboBox<>(seatTypes);
+        seatTypeComboBox.setName("좌석 타입");
         seatTypeComboBox.setBounds(140, 160, 200, 25);
         airlineFormPanel.add(seatTypeComboBox);
 
@@ -594,8 +599,10 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         tripTypeLabel.setBounds(20, 200, 100, 25);
         airlineFormPanel.add(tripTypeLabel);
         JRadioButton roundTrip = new JRadioButton("왕복");
+        roundTrip.setName("왕복/편도");
         roundTrip.setBounds(140, 200, 60, 25);
         JRadioButton oneWay = new JRadioButton("편도");
+        oneWay.setName("왕복/편도");
         oneWay.setBounds(210, 200, 60, 25);
         ButtonGroup tripTypeGroup = new ButtonGroup();
         tripTypeGroup.add(roundTrip);
@@ -608,6 +615,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         airplaneCostLabel.setBounds(20, 240, 100, 25);
         airlineFormPanel.add(airplaneCostLabel);
         JTextField airplaneCostField = new JTextField(20);
+        airplaneCostField.setName("항공 비용");
         airplaneCostField.setBounds(140, 240, 200, 25);
         airlineFormPanel.add(airplaneCostField);
 
@@ -616,6 +624,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         registerLabel.setBounds(20, 280, 100, 25);
         airlineFormPanel.add(registerLabel);
         JTextField registerField = new JTextField(20);
+        registerField.setName("항공 등록 여부");
         registerField.setBounds(140, 280, 200, 25);
         airlineFormPanel.add(registerField);
 
@@ -623,7 +632,6 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         JLabel airplanePhotoLabel = new JLabel("항공 대표 사진:");
         airplanePhotoLabel.setBounds(20, 320, 100, 25);
         airlineFormPanel.add(airplanePhotoLabel);
-   
 
         return airlineFormPanel;
     }
@@ -637,6 +645,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         bsNumLabel.setBounds(20, 0, 100, 25);
         rentalCarFormPanel.add(bsNumLabel);
         JTextField carBSNumField = new JTextField(20);
+        carBSNumField.setName("렌터카 비즈니스 넘버");
         carBSNumField.setBounds(140, 0, 200, 25);
         rentalCarFormPanel.add(carBSNumField);
 
@@ -645,6 +654,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         carCompanyLabel.setBounds(20, 40, 100, 25);
         rentalCarFormPanel.add(carCompanyLabel);
         JTextField carCompanyField = new JTextField(20);
+        carCompanyField.setName("자동차 회사");
         carCompanyField.setBounds(140, 40, 200, 25);
         rentalCarFormPanel.add(carCompanyField);
 
@@ -654,6 +664,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         rentalCarFormPanel.add(rentalTimeLabel);
         String[] rentalTimes = {"12시간", "24시간", "30시간", "36시간", "42시간", "48시간"};
         JComboBox<String> rentalTimeComboBox = new JComboBox<>(rentalTimes);
+        rentalTimeComboBox.setName("대여 시간");
         rentalTimeComboBox.setBounds(140, 80, 200, 25);
         rentalCarFormPanel.add(rentalTimeComboBox);
 
@@ -662,6 +673,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         carCostLabel.setBounds(20, 120, 100, 25);
         rentalCarFormPanel.add(carCostLabel);
         JTextField carCostField = new JTextField(20);
+        carCostField.setName("렌터카 비용");
         carCostField.setBounds(140, 120, 200, 25);
         rentalCarFormPanel.add(carCostField);
 
@@ -671,6 +683,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         rentalCarFormPanel.add(vehicleTypeLabel);
         String[] vehicleTypes = {"모닝", "레이", "아반떼", "쏘나타", "그랜저", "쏘렌토", "스타리아", "아이오닉", "코나", "레이"};
         JComboBox<String> vehicleTypeComboBox = new JComboBox<>(vehicleTypes);
+        vehicleTypeComboBox.setName("차종");
         vehicleTypeComboBox.setBounds(140, 160, 200, 25);
         rentalCarFormPanel.add(vehicleTypeComboBox);
 
@@ -679,10 +692,13 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         fuelTypeLabel.setBounds(20, 200, 100, 25);
         rentalCarFormPanel.add(fuelTypeLabel);
         JRadioButton gasoline = new JRadioButton("휘발유");
+        gasoline.setName("연료");
         gasoline.setBounds(140, 200, 60, 25);
         JRadioButton diesel = new JRadioButton("경유");
+        diesel.setName("연료");
         diesel.setBounds(210, 200, 60, 25);
         JRadioButton electricity = new JRadioButton("전기");
+        electricity.setName("연료");
         electricity.setBounds(280, 200, 60, 25);
         ButtonGroup fuelTypeGroup = new ButtonGroup();
         fuelTypeGroup.add(gasoline);
@@ -697,8 +713,10 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         highPassLabel.setBounds(20, 240, 100, 25);
         rentalCarFormPanel.add(highPassLabel);
         JRadioButton highPassYes = new JRadioButton("O");
+        highPassYes.setName("하이패스");
         highPassYes.setBounds(140, 240, 50, 25);
         JRadioButton highPassNo = new JRadioButton("X");
+        highPassNo.setName("하이패스");
         highPassNo.setBounds(200, 240, 50, 25);
         ButtonGroup highPassGroup = new ButtonGroup();
         highPassGroup.add(highPassYes);
@@ -711,6 +729,7 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         registerLabel.setBounds(20, 280, 100, 25);
         rentalCarFormPanel.add(registerLabel);
         JTextField registerField = new JTextField(20);
+        registerField.setName("렌터카 등록 여부");
         registerField.setBounds(140, 280, 200, 25);
         rentalCarFormPanel.add(registerField);
 
@@ -720,5 +739,76 @@ private static void adjustFormPositions(JPanel formPanel, boolean airlineVisible
         rentalCarFormPanel.add(carPhotoLabel);
 
         return rentalCarFormPanel;
+    }
+
+    private static void saveReservationDetails(JPanel formPanel, String reservationNumber) {
+        Component[] components = formPanel.getComponents();
+        StringBuilder reservationDetails = new StringBuilder();
+
+        reservationDetails.append("예약 번호: ").append(reservationNumber).append("\n");
+        reservationDetails.append("호텔 예약 정보:\n");
+        for (Component component : components) {
+            if (component instanceof JTextField) {
+                JTextField textField = (JTextField) component;
+                reservationDetails.append(textField.getName()).append(": ").append(textField.getText()).append("\n");
+            } else if (component instanceof JComboBox) {
+                JComboBox<String> comboBox = (JComboBox<String>) component;
+                reservationDetails.append(comboBox.getName()).append(": ").append(comboBox.getSelectedItem()).append("\n");
+            } else if (component instanceof JRadioButton) {
+                JRadioButton radioButton = (JRadioButton) component;
+                if (radioButton.isSelected()) {
+                    reservationDetails.append(radioButton.getName()).append(": ").append(radioButton.getText()).append("\n");
+                }
+            }
+        }
+
+        reservationDetails.append("\n항공편 예약 정보:\n");
+        for (Component component : components) {
+            if (component instanceof JPanel) {
+                JPanel panel = (JPanel) component;
+                for (Component subComponent : panel.getComponents()) {
+                    if (subComponent instanceof JTextField) {
+                        JTextField textField = (JTextField) subComponent;
+                        reservationDetails.append(textField.getName()).append(": ").append(textField.getText()).append("\n");
+                    } else if (subComponent instanceof JComboBox) {
+                        JComboBox<String> comboBox = (JComboBox<String>) subComponent;
+                        reservationDetails.append(comboBox.getName()).append(": ").append(comboBox.getSelectedItem()).append("\n");
+                    } else if (subComponent instanceof JRadioButton) {
+                        JRadioButton radioButton = (JRadioButton) subComponent;
+                        if (radioButton.isSelected()) {
+                            reservationDetails.append(radioButton.getName()).append(": ").append(radioButton.getText()).append("\n");
+                        }
+                    }
+                }
+            }
+        }
+
+        reservationDetails.append("\n렌터카 예약 정보:\n");
+        for (Component component : components) {
+            if (component instanceof JPanel) {
+                JPanel panel = (JPanel) component;
+                for (Component subComponent : panel.getComponents()) {
+                    if (subComponent instanceof JTextField) {
+                        JTextField textField = (JTextField) subComponent;
+                        reservationDetails.append(textField.getName()).append(": ").append(textField.getText()).append("\n");
+                    } else if (subComponent instanceof JComboBox) {
+                        JComboBox<String> comboBox = (JComboBox<String>) subComponent;
+                        reservationDetails.append(comboBox.getName()).append(": ").append(comboBox.getSelectedItem()).append("\n");
+                    } else if (subComponent instanceof JRadioButton) {
+                        JRadioButton radioButton = (JRadioButton) subComponent;
+                        if (radioButton.isSelected()) {
+                            reservationDetails.append(radioButton.getName()).append(": ").append(radioButton.getText()).append("\n");
+                        }
+                    }
+                }
+            }
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("reservation_details.txt", true))) {
+            writer.write(reservationDetails.toString());
+            writer.newLine(); // Add a new line for separating different reservations
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
